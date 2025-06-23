@@ -1,5 +1,5 @@
 {
-  "name": "bd-number-lookup",
+  "name": "bd-number-lookup-pro",
   "version": "1.0.0",
   "private": true,
   "description": "A full-featured Bangladeshi number lookup tool with an admin panel and public API.",
@@ -11,15 +11,14 @@
   },
   "dependencies": {
     "abort-controller": "^3.0.0",
-    "next": "12.1.0",
+    "next": "12.3.4",
     "node-fetch": "^2.6.7",
-    "pg": "^8.7.3",
-    "react": "17.0.2",
-    "react-dom": "17.0.2"
+    "pg": "^8.8.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
   },
   "devDependencies": {
-    "eslint": "8.11.0",
-    "eslint-config-next": "12.1.0"
+    "eslint": "8.25.0",
+    "eslint-config-next": "12.3.4"
   }
 }
-
