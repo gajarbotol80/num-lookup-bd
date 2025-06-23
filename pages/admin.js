@@ -1,5 +1,6 @@
 // /pages/admin.js
 // This file creates the secure admin panel at the /admin route.
+// It is a self-contained page with all its own HTML, CSS, and interactive JavaScript.
 
 export default function AdminPage() {
     const adminHtml = `
@@ -9,7 +10,7 @@ export default function AdminPage() {
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>Admin Panel - BD Number Lookup</title>
-      <meta name="robots" content="noindex"> <!-- Prevent search engines from indexing the admin page -->
+      <meta name="robots" content="noindex, nofollow"> <!-- Prevent search engines from indexing the admin page -->
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
         :root {
@@ -25,25 +26,22 @@ export default function AdminPage() {
         }
         @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
         
-        .admin-container { max-width: 900px; margin: 2rem auto; }
+        .admin-container { max-width: 1000px; margin: 2rem auto; }
         .login-box, .dashboard { background: var(--card-bg); backdrop-filter: blur(10px); padding: 2rem; border-radius: 10px; border: 1px solid var(--border-color); }
         h1, h2 { color: var(--primary-blue); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
         
-        /* Stats */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
         .stat-card { background: #010409; padding: 1.5rem; border-radius: 8px; text-align: center; border: 1px solid var(--border-color); }
         .stat-card h3 { margin: 0 0 0.5rem 0; color: var(--text-secondary); font-size: 1em; text-transform: uppercase; }
         .stat-card p { font-size: 2.2rem; font-weight: bold; color: var(--primary-blue); margin: 0; }
         
-        /* Controls */
         .controls { margin-top: 2rem; padding-top: 1rem; }
-        .control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .control-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
         .control-group { background: #0d1117; padding: 1.5rem; border-radius: 8px; }
         
-        /* Form elements & Buttons */
         .form-group { margin-bottom: 1rem; }
         .form-group label { display: block; margin-bottom: .5rem; font-weight: bold; }
-        .form-group input[type="text"], .form-group input[type="password"], .form-group textarea {
+        .form-group input, .form-group textarea {
             width: 100%; box-sizing: border-box; background: #010409; border: 1px solid var(--border-color);
             border-radius: 6px; padding: 12px; color: var(--text-primary); font-size: 1em;
         }
@@ -52,16 +50,15 @@ export default function AdminPage() {
         
         button {
             padding: 12px 20px; font-size: 16px; border: 1px solid var(--border-color); outline: none;
-            transition: all 0.2s ease; cursor: pointer; font-weight: 600; border-radius: 6px;
-            color: #fff;
+            transition: all 0.2s ease; cursor: pointer; font-weight: 600; border-radius: 6px; color: #fff;
         }
         button:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        button:disabled { cursor: not-allowed; opacity: 0.5; transform: none; box-shadow: none; }
         .btn-primary { background-color: var(--primary-blue); border-color: var(--primary-blue); color: #010409; }
         .btn-on { background-color: var(--primary-green); border-color: var(--primary-green); }
         .btn-off { background-color: var(--primary-red); border-color: var(--primary-red); }
         .btn-maint { background-color: var(--primary-yellow); border-color: var(--primary-yellow); color: #010409;}
 
-        /* Logs Table */
         .logs { margin-top: 2rem; }
         .table-wrapper { overflow-x: auto; }
         .logs-table { width: 100%; border-collapse: collapse; }
@@ -71,9 +68,11 @@ export default function AdminPage() {
         .success { background-color: #2ea043; }
         .failure { background-color: #f85149; }
         
-        /* Pagination */
         .pagination { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1.5rem; }
         #logoutBtn { position: absolute; top: 20px; right: 20px; background: var(--primary-red); border-color: var(--primary-red); }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: var(--primary-green); color: white; padding: 15px 25px; border-radius: 8px; z-index: 1000; opacity: 0; transition: opacity 0.5s, transform 0.5s; }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.error { background-color: var(--primary-red); }
       </style>
     </head>
     <body>
@@ -129,6 +128,7 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
+      <div id="toast" class="toast"></div>
 
       <script>
         const API_BASE = '/api/admin';
@@ -144,7 +144,7 @@ export default function AdminPage() {
 
         function login() {
             const key = document.getElementById('apiKey').value;
-            if (!key) return alert('Please enter a key.');
+            if (!key) return showToast('Please enter a key.', 'error');
             localStorage.setItem('adminSecret', key);
             checkAuth();
         }
@@ -158,8 +158,7 @@ export default function AdminPage() {
         async function checkAuth() {
             const headers = getAuthHeaders();
             if (!headers) {
-                logout(); // Ensure dashboard is hidden if no key
-                return;
+                logout(); return;
             }
             try {
                 const res = await fetch(\`\${API_BASE}/stats\`, { headers });
@@ -169,10 +168,10 @@ export default function AdminPage() {
                     loadDashboard();
                 } else {
                     localStorage.removeItem('adminSecret');
-                    alert('Authorization failed. The key is invalid or has expired.');
+                    showToast('Authorization failed. The key is invalid.', 'error');
                 }
             } catch (e) {
-                alert('Could not connect to the server to verify key.');
+                showToast('Could not connect to the server.', 'error');
             }
         }
 
@@ -189,15 +188,11 @@ export default function AdminPage() {
                 const statsData = await statsRes.json();
                 const logsData = await logsRes.json();
                 
-                renderStats(statsData);
-                renderLogs(logsData);
-                renderPagination(logsData.pagination);
-                updateControls(statsData.status);
+                renderStats(statsData); renderLogs(logsData);
+                renderPagination(logsData.pagination); updateControls(statsData.status);
                 currentApiStatus = statsData.status;
-
             } catch (e) {
-                console.error(e);
-                alert('Error loading dashboard data. Check console for details.');
+                console.error(e); showToast('Error loading dashboard data.', 'error');
             }
         }
 
@@ -218,7 +213,7 @@ export default function AdminPage() {
             
             apiBtn.textContent = status.is_active ? 'Turn API OFF' : 'Turn API ON';
             apiBtn.className = status.is_active ? 'btn-off' : 'btn-on';
-            document.getElementById('apiStatusText').textContent = status.is_active ? 'API is currently live and accepting requests.' : 'API is offline and will return 503 error.';
+            document.getElementById('apiStatusText').textContent = status.is_active ? 'API is live and accepting requests.' : 'API is offline.';
 
             maintenanceBtn.textContent = status.is_maintenance ? 'Disable Maintenance' : 'Enable Maintenance';
             maintenanceBtn.className = status.is_maintenance ? 'btn-on' : 'btn-maint';
@@ -231,7 +226,7 @@ export default function AdminPage() {
         function renderLogs(data) {
             const logsBody = document.getElementById('logsBody');
             if(data.logs.length === 0) {
-              logsBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No logs found.</td></tr>';
+              logsBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No logs found for this page.</td></tr>';
               return;
             }
             logsBody.innerHTML = data.logs.map(log => \`
@@ -249,6 +244,7 @@ export default function AdminPage() {
             const { total, page, limit } = pagination;
             totalPages = Math.ceil(total / limit);
             const paginationDiv = document.getElementById('pagination');
+            if (totalPages <= 1) { paginationDiv.innerHTML = ''; return; }
             paginationDiv.innerHTML = \`
                 <button onclick="changePage(\${page - 1})" \${page === 1 ? 'disabled' : ''}>&laquo; Prev</button>
                 <span>Page \${page} of \${totalPages}</span>
@@ -257,20 +253,10 @@ export default function AdminPage() {
         }
 
         function changePage(page) {
-            if (page < 1 || page > totalPages) return;
-            currentPage = page;
-            loadDashboard();
+            if (page < 1 || page > totalPages) return; currentPage = page; loadDashboard();
         }
-
-        function toggleApi() {
-            currentApiStatus.is_active = !currentApiStatus.is_active;
-            saveApiStatus();
-        }
-
-        function toggleMaintenance() {
-            currentApiStatus.is_maintenance = !currentApiStatus.is_maintenance;
-            saveApiStatus();
-        }
+        function toggleApi() { currentApiStatus.is_active = !currentApiStatus.is_active; saveApiStatus(); }
+        function toggleMaintenance() { currentApiStatus.is_maintenance = !currentApiStatus.is_maintenance; saveApiStatus(); }
 
         async function saveApiStatus() {
             const headers = getAuthHeaders();
@@ -279,22 +265,26 @@ export default function AdminPage() {
             
             try {
                 const res = await fetch(\`\${API_BASE}/status\`, {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify(currentApiStatus)
+                    method: 'POST', headers: headers, body: JSON.stringify(currentApiStatus)
                 });
-                if(!res.ok) throw new Error('Failed to update status.');
+                if(!res.ok) throw new Error(await res.text());
                 const data = await res.json();
                 currentApiStatus = data.newStatus;
                 updateControls(currentApiStatus);
-                alert('API status updated successfully!');
+                showToast('API status updated successfully!');
             } catch(e) {
-                console.error(e);
-                alert('Error saving status. See console for details.');
+                console.error(e); showToast('Error saving status.', 'error');
             }
         }
         
-        // Initial load check
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast show ' + type;
+            setTimeout(() => { toast.className = 'toast'; }, 3000);
+        }
+
+        // Initial check on page load
         checkAuth();
       <\/script>
     </body>
@@ -302,4 +292,3 @@ export default function AdminPage() {
     `;
     return <div dangerouslySetInnerHTML={{ __html: adminHtml }} />;
 }
-
